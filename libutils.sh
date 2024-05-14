@@ -30,4 +30,41 @@ function version_cmp {
     fi
 }
 
+## Find and return first ocurrence of Semantic Version string inside of
+## provided STRING.
+## If does not find anything SemVer string, exit with error status.
+## Use: $0 extract_semver {STRING} -> {SemVer_string}
+function extract_semver {
+    input_string="$1"
+    first_version=$(grep -oP \
+        '(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' \
+        <<< "$input_string" | head -n 1)
+    if [[ -z $first_version ]]
+    then
+        exit 1
+    else
+        echo "$first_version"
+    fi
+}
+
+## Checks if the current version of the program installed on the host 
+## is equal to or lower than the one given by the argument.
+## Use: $0 check_version_app {PROG MINVER} -> {0 | 1}
+function check_version_app {
+    prog="$1"
+    ver="$2"
+    sys_prog_version_wall=$($prog --version 2>/dev/null)
+    if [[ $? == 127 ]]
+    then
+        exit 127
+    fi
+    sys_prog_version=$(extract_semver "$(head -n 1 <<< "$sys_prog_version_wall")")
+    if [[ $(version_cmp "$ver" "$sys_prog_version") == 0 ]]
+    then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
 "$@"
